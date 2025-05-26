@@ -124,3 +124,113 @@ class TestAccountService(TestCase):
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
     # ADD YOUR TEST CASES HERE ...
+    def test_read_an_account(self):
+        """It should find an account"""
+        create_account = AccountFactory()
+        response = self.client.post(
+        BASE_URL,
+        json=create_account.serialize(),
+        content_type="application/json"
+        )
+        new_account = response.get_json()
+        print(f'The id is {new_account["id"]}')
+        get_url = BASE_URL +"/"+  str(new_account["id"])
+        print(f'Get_url is {get_url}')
+        response = self.client.get(get_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(create_account.name, data["name"])
+    
+    def test_account_not_found(self):
+        """Test not finding an account"""
+        get_url = BASE_URL+'/0'
+        response = self.client.get(get_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_account_list(self):
+        """Test list of accounts is returned"""
+        for i in range(10):
+            account = AccountFactory()
+            response = self.client.post(
+              BASE_URL,
+              json=account.serialize(),
+              content_type="application/json"
+            )
+        response = self.client.get("/accounts")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data),10)
+    
+    def test_account_list_empty(self):
+        """Test returning empty list"""
+        response = self.client.get("/accounts")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data),0)
+
+    def test_account_update(self):
+        """Test Update an account"""
+        new_name = "Bob Smith"
+        create_account = AccountFactory()
+        response = self.client.post(
+        BASE_URL,
+        json=create_account.serialize(),
+        content_type="application/json"
+        )
+        new_account = response.get_json()
+        new_account["name"] = new_name
+        
+        put_url = BASE_URL+'/'+str(new_account["id"])
+        verify_response = self.client.get(put_url)
+        self.assertEqual(verify_response.status_code, status.HTTP_200_OK)
+        response = self.client.put(
+            put_url, 
+            json=new_account,
+            content_type="application/json"
+            )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data["name"], new_name)
+
+    def test_account_update_no_account(self):
+        """Test Update an account with no account"""
+        new_name = "Bob Smith"
+        create_account = AccountFactory()
+        response = self.client.post(
+        BASE_URL,
+        json=create_account.serialize(),
+        content_type="application/json"
+        )
+        new_account = response.get_json()
+        new_account["name"] = new_name
+        put_url = BASE_URL+'/0'
+        response = self.client.put(
+            put_url, 
+            json=new_account,
+            content_type="application/json"
+            )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    
+    def test_account_delete(self):
+        create_account = AccountFactory()
+        response = self.client.post(
+        BASE_URL,
+        json=create_account.serialize(),
+        content_type="application/json"
+        )
+        new_account = response.get_json()        
+        delete_url = BASE_URL+'/'+str(new_account["id"])
+        response = self.client.delete(delete_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_delete_not_allowed(self):
+        response = self.client.delete(BASE_URL)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_delete_post_allowed(self):
+        response = self.client.post(BASE_URL)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_delete_post_allowed(self):
+        response = self.client.put(BASE_URL)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
